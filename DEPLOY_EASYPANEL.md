@@ -5,9 +5,9 @@
 - Servicio de aplicación: construir la imagen con el `Dockerfile` de este repositorio.
 - Base de datos: crear un servicio MySQL en EasyPanel y mantenerlo privado en la red interna.
 - Dominio: asignar `autocontrol.programamega.com` al servicio de aplicación y activar HTTPS.
-- Puerta de acceso: Apache exige usuario y contraseña en el sitio y en la API. Usa credenciales fuertes y no las guardes en Git.
+- La aplicación y su API son públicas si no se añade un mecanismo externo de autenticación.
 
-La autenticación de la aplicación que aparece después de la puerta Basic Auth es del lado del navegador; no reemplaza una autenticación de servidor. Comparte el acceso del sitio únicamente con personas autorizadas.
+**No guardes información personal o real de clientes en esta versión pública.** El inicio de sesión de administrador está implementado en el navegador, y la API no autentica ni autoriza solicitudes: cualquier visitante puede leer o modificar todos los datos almacenados. Para usarla con datos reales, primero añade autenticación del lado del servidor o una capa externa como Cloudflare Access.
 
 ## Preparar la base de datos
 
@@ -29,21 +29,19 @@ Si la tabla `almacenamiento` está vacía, el frontend crea datos de demostraci�
 
    | Variable | Valor |
    |---|---|
-   | `AUTOCTRL_BASIC_AUTH_USER` | Usuario elegido para proteger el sitio |
-   | `AUTOCTRL_BASIC_AUTH_PASSWORD` | Contraseña larga y única para proteger el sitio |
    | `AUTOCTRL_DB_HOST` | Host interno del servicio MySQL |
    | `AUTOCTRL_DB_PORT` | Puerto de MySQL, normalmente `3306` |
    | `AUTOCTRL_DB_NAME` | Nombre de la base importada |
    | `AUTOCTRL_DB_USER` | Usuario MySQL dedicado |
    | `AUTOCTRL_DB_PASS` | Contraseña MySQL |
 
-6. Despliega y comprueba que el dominio solicite la autenticación del servidor y que la app abra después de autenticarte.
+6. Despliega y comprueba que la app abra en el dominio. En esta configuración, las páginas y la API son accesibles públicamente.
 
 ## Actualizaciones y copias de seguridad
 
 - Configura copias de seguridad periódicas de MySQL antes de comenzar a guardar datos reales.
 - Los datos de la app se guardan en la tabla `almacenamiento`. No elimines esa tabla al actualizar.
-- Las variables de base de datos y las credenciales Basic Auth se configuran en EasyPanel; no las añadas a archivos del repositorio.
+- Las variables de base de datos se configuran en EasyPanel; no las añadas a archivos del repositorio.
 - Si cambias la estructura de la app, vuelve a desplegar desde el repositorio y verifica la conexión a la base de datos.
 
 ## Recordatorios de WhatsApp
