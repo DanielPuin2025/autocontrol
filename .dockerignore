@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+!.env.example
+**/*.log
+**/Thumbs.db
+**/.DS_Store
+autocontrol.sql
+Base_de_datos/
