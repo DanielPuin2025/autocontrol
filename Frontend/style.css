@@ -62,6 +62,11 @@
     background:radial-gradient(circle at 20% 20%, var(--navy3), var(--navy) 65%);
     padding:24px;
   }
+
+  /* Cuando body tiene foto de fondo, el .screen-full debe ser transparente */
+  body[style*="background-image"] .screen-full{
+    background:transparent !important;
+  }
   .welcome-card{max-width:560px;width:100%;text-align:center;color:#fff;}
   .logo-mark{
     width:104px;height:104px;border-radius:24px;background:#fff;

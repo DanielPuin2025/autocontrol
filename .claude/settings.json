@@ -9,7 +9,9 @@
       "Bash(git commit -m ' *)",
       "Bash(ls -la C:/xampp/htdocs/autocontrol/ 2>/dev/null | head -20 || echo \"Directorio no encontrado\")",
       "Read(//c/xampp/htdocs/autocontrol/**)",
-      "Bash(rm -f \"Autocontrol ACTUALIZADO.7z\" autocontrol.sql test.php verificar_db.php diagnostico.bat SOLUCION_RAPIDA.md SOLUCION_PROBLEMAS.md)"
+      "Bash(rm -f \"Autocontrol ACTUALIZADO.7z\" autocontrol.sql test.php verificar_db.php diagnostico.bat SOLUCION_RAPIDA.md SOLUCION_PROBLEMAS.md)",
+      "WebFetch(domain:autocontrol.programamega.com)",
+      "Bash(git commit -m 'Mejorar aplicación de foto de fondo con debugging *)"
     ],
     "additionalDirectories": [
       "C:\\xampp\\htdocs\\Autocontrol"

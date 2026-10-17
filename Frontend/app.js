@@ -3046,28 +3046,25 @@ function render(){
   const nombreTaller = (state.data.config && state.data.config.nombreTaller) || 'Taller Lubricantes Molina';
   document.title = 'AutoControl - ' + nombreTaller;
 
+  // Aplicar foto del local como fondo en vistas públicas
   const fotoLocal = (state.data.config && state.data.config.fotoLocal) || null;
   const vistasPublicas = ['welcome','login','registro','loading'];
 
-  // Aplicar foto del local como fondo en vistas públicas
   if(fotoLocal && vistasPublicas.includes(state.view)){
-    // Usar template string correcto para evitar problemas con comillas
-    const bgImage = `linear-gradient(rgba(10,14,30,0.78), rgba(10,14,30,0.88)), url("${fotoLocal}")`;
-    document.body.style.backgroundImage = bgImage;
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundAttachment = 'fixed';
-    document.body.style.backgroundRepeat = 'no-repeat';
-    console.log('✅ Fondo aplicado - Vista:', state.view, '- Foto:', fotoLocal.substring(0, 50) + '...');
+    // Escapar comillas en el data URL y aplicar estilos
+    const fotoEscapada = fotoLocal.replace(/'/g, "\\'");
+    document.body.style.setProperty('background-image', `linear-gradient(rgba(10,14,30,0.78), rgba(10,14,30,0.88)), url('${fotoEscapada}')`, 'important');
+    document.body.style.setProperty('background-size', 'cover', 'important');
+    document.body.style.setProperty('background-position', 'center', 'important');
+    document.body.style.setProperty('background-attachment', 'fixed', 'important');
+    document.body.style.setProperty('background-repeat', 'no-repeat', 'important');
   } else {
-    document.body.style.backgroundImage = '';
-    document.body.style.backgroundSize = '';
-    document.body.style.backgroundPosition = '';
-    document.body.style.backgroundAttachment = '';
-    document.body.style.backgroundRepeat = '';
-    if(vistasPublicas.includes(state.view) && !fotoLocal){
-      console.log('⚠️ Vista pública pero sin foto del local configurada');
-    }
+    // Restaurar fondo predeterminado
+    document.body.style.removeProperty('background-image');
+    document.body.style.removeProperty('background-size');
+    document.body.style.removeProperty('background-position');
+    document.body.style.removeProperty('background-attachment');
+    document.body.style.removeProperty('background-repeat');
   }
 
   $('#app').innerHTML = html;
