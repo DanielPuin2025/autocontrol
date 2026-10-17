@@ -1384,6 +1384,14 @@ function renderWelcome(){
       <h1>AutoControl</h1>
       <p class="sub"> Aplicativo web para la organización del taller automotriz. Administra facturas, servicios, clientes, solicitudes y alertas de mantenimiento en un solo lugar.</p>
       <button class="btn btn-accent" style="padding:14px 34px;font-size:15px" onclick="goto('login')">🔐 Ingresar al sistema</button>
+      <div style="margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;color:rgba(255,255,255,0.6);">
+        <div style="margin-bottom:8px;font-weight:600;color:rgba(255,255,255,0.8);">Desarrollado por:</div>
+        <div>Jhon Freddy Molina - Director</div>
+        <div>Daniel Humberto Puin Granados - Desarrollador</div>
+        <div>Verónica Bella Yesenia Cuevas Mojica - Programadora</div>
+        <div>Ginna Alexandra Diaz Molina - Diseñadora</div>
+        <div style="margin-top:10px;font-size:11px;">© 2026 Taller Lubricantes Molina</div>
+      </div>
     </div>
   </div>`;
 }
