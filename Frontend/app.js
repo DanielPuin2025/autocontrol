@@ -18,6 +18,7 @@ let state = {
   deleteTarget: null,    // {entity, id}
   logoutConfirm: false,
   successMsg: null,
+  desarrolladorasModal: false,
   facturaPrompt: null,   // {solicitudId, numero, error}
   facturaPrintPrompt: false,
   solicitudAcceptPrompt: null,
@@ -721,6 +722,9 @@ function confirmLogout(){
   render();
 }
 
+function mostrarDesarrolladoras(){ state.desarrolladorasModal = true; render(); }
+function cerrarDesarrolladoras(){ state.desarrolladorasModal = false; render(); }
+
 /* ================= BORRAR ================= */
 function askDelete(entity, id){
   if(state.session && state.session.role === 'cliente') return;
@@ -1384,13 +1388,9 @@ function renderWelcome(){
       <h1>AutoControl</h1>
       <p class="sub"> Aplicativo web para la organización del taller automotriz. Administra facturas, servicios, clientes, solicitudes y alertas de mantenimiento en un solo lugar.</p>
       <button class="btn btn-accent" style="padding:14px 34px;font-size:15px" onclick="goto('login')">🔐 Ingresar al sistema</button>
-      <div style="margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;color:rgba(255,255,255,0.6);">
-        <div style="margin-bottom:8px;font-weight:600;color:rgba(255,255,255,0.8);">Desarrollado por:</div>
-        <div>Jhon Freddy Molina - Director</div>
-        <div>Daniel Humberto Puin Granados - Desarrollador</div>
-        <div>Verónica Bella Yesenia Cuevas Mojica - Programadora</div>
-        <div>Ginna Alexandra Diaz Molina - Diseñadora</div>
-        <div style="margin-top:10px;font-size:11px;">© 2026 Taller Lubricantes Molina</div>
+      <div style="margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);">
+        <button class="btn" style="font-size:13px;padding:8px 16px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)" onclick="mostrarDesarrolladoras()">👩‍💻 Ver Desarrolladoras</button>
+        <div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,0.6);">© 2026 Taller Lubricantes Molina</div>
       </div>
     </div>
   </div>`;
@@ -2806,6 +2806,38 @@ function renderLogoutModal(){
     </div>
   </div>`;
 }
+
+function renderDesarrolladorasModal(){
+  return `
+  <div class="modal-bg show" onclick="if(event.target===this) cerrarDesarrolladoras()">
+    <div class="modal-box" style="max-width:600px;">
+      <button class="modal-close" onclick="cerrarDesarrolladoras()">✕</button>
+      <h3 style="margin-bottom:8px;">Elaborado por</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:24px;">Equipo de desarrollo de AutoControl</p>
+      <div style="display:flex;justify-content:center;gap:40px;margin-bottom:20px;">
+        <div style="text-align:center;">
+          <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid #9333ea;box-shadow:0 4px 12px rgba(147,51,234,0.3);">
+            <img src="veronica.jpeg" alt="Verónica Cuevas" style="width:100%;height:100%;object-fit:cover;">
+          </div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Verónica Bella Yesenia</div>
+          <div style="font-size:13px;color:var(--muted);">Cuevas Mojica</div>
+          <div style="font-size:12px;color:#9333ea;margin-top:4px;">Programadora</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid #10b981;box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+            <img src="ginna.jpeg" alt="Ginna Diaz" style="width:100%;height:100%;object-fit:cover;">
+          </div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Ginna Alexandra</div>
+          <div style="font-size:13px;color:var(--muted);">Diaz Molina</div>
+          <div style="font-size:12px;color:#10b981;margin-top:4px;">Diseñadora</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);padding-top:16px;border-top:1px solid rgba(255,255,255,0.1);">
+        © 2026 Taller Lubricantes Molina
+      </div>
+    </div>
+  </div>`;
+}
 function renderFacturaPromptModal(){
   const p = state.facturaPrompt;
   if(!p) return '';
@@ -2956,6 +2988,7 @@ function render(){
   if(state.modal && state.modal.kind === 'form') html += renderFormModal();
   if(state.deleteTarget) html += renderDeleteModal();
   if(state.logoutConfirm) html += renderLogoutModal();
+  if(state.desarrolladorasModal) html += renderDesarrolladorasModal();
   if(state.facturaPrompt) html += renderFacturaPromptModal();
   if(state.facturaPrintPrompt) html += renderFacturaPrintPrompt();
   if(state.solicitudAcceptPrompt) html += renderSolicitudAcceptModal();
