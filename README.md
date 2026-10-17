@@ -290,7 +290,7 @@ La versión anterior usaba `localStorage` y la tabla `almacenamiento` con JSON. 
 
 ## 📄 Derechos Reservados
 
-© 2025 Taller Lubricantes Molina & Daniel Humberto Puin Granados.  
+© 2026 Taller Lubricantes Molina & Daniel Humberto Puin Granados.  
 Todos los derechos reservados.
 
 Este software fue desarrollado específicamente para **Taller Lubricantes Molina**.
