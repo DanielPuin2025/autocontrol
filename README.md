@@ -266,4 +266,45 @@ La versión anterior usaba `localStorage` y la tabla `almacenamiento` con JSON. 
 
 ---
 
-Desarrollado con ❤️ para Taller Lubricantes Molina
+## 👨‍💻 Creadores del Proyecto
+
+**AutoControl - Sistema de Gestión para Taller Automotriz**
+
+### Equipo de Desarrollo
+
+**Dirección y Desarrollo:**
+- **Jhon Freddy Molina** - Director del Proyecto
+- **Taller Lubricantes Molina** - Propietario y Visionario del Sistema
+
+**Desarrollo Técnico:**
+- **Daniel Humberto Puin Granados** - Desarrollador Full Stack
+  - Email: danielpuin2025@gmail.com
+  - GitHub: [@DanielPuin2025](https://github.com/DanielPuin2025)
+
+### Tecnologías Utilizadas
+- Frontend: HTML5, CSS3, JavaScript (Vanilla)
+- Backend: PHP 8.0+
+- Base de Datos: MySQL 8.0
+- Arquitectura: REST API
+- Deployment: Docker, EasyPanel
+
+## 📄 Derechos Reservados
+
+© 2025 Taller Lubricantes Molina & Daniel Humberto Puin Granados.  
+Todos los derechos reservados.
+
+Este software fue desarrollado específicamente para **Taller Lubricantes Molina**.
+
+### Términos de Uso
+- ✅ Uso autorizado para Taller Lubricantes Molina
+- ✅ Modificaciones permitidas para el cliente autorizado
+- ❌ Redistribución no autorizada sin permiso expreso
+- ❌ Uso comercial por terceros no autorizado
+
+Para consultas sobre licenciamiento o uso del software, contactar a:
+- **Taller Lubricantes Molina:** Jhon Freddy Molina
+- **Desarrollo Técnico:** danielpuin2025@gmail.com
+
+---
+
+Desarrollado con ❤️ por Daniel Puin para Taller Lubricantes Molina
