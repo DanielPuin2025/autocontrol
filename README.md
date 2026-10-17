@@ -272,7 +272,7 @@ La versión anterior usaba `localStorage` y la tabla `almacenamiento` con JSON. 
 
 ### Equipo de Desarrollo
 
-**Dirección y Desarrollo:**
+**Dirección del Proyecto:**
 - **Jhon Freddy Molina** - Director del Proyecto
 - **Taller Lubricantes Molina** - Propietario y Visionario del Sistema
 
@@ -280,6 +280,11 @@ La versión anterior usaba `localStorage` y la tabla `almacenamiento` con JSON. 
 - **Daniel Humberto Puin Granados** - Desarrollador Full Stack
   - Email: danielpuin2025@gmail.com
   - GitHub: [@DanielPuin2025](https://github.com/DanielPuin2025)
+
+- **Verónica Bella Yesenia Cuevas Mojica** - Programadora
+
+**Diseño:**
+- **Ginna Alexandra Diaz Molina** - Diseñadora
 
 ### Tecnologías Utilizadas
 - Frontend: HTML5, CSS3, JavaScript (Vanilla)
@@ -290,7 +295,7 @@ La versión anterior usaba `localStorage` y la tabla `almacenamiento` con JSON. 
 
 ## 📄 Derechos Reservados
 
-© 2026 Taller Lubricantes Molina & Daniel Humberto Puin Granados.  
+© 2026 Taller Lubricantes Molina & Equipo de Desarrollo AutoControl.  
 Todos los derechos reservados.
 
 Este software fue desarrollado específicamente para **Taller Lubricantes Molina**.
@@ -307,4 +312,4 @@ Para consultas sobre licenciamiento o uso del software, contactar a:
 
 ---
 
-Desarrollado con ❤️ por Daniel Puin para Taller Lubricantes Molina
+Desarrollado con ❤️ por el Equipo AutoControl para Taller Lubricantes Molina
