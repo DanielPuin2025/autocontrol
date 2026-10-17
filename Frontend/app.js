@@ -3048,16 +3048,26 @@ function render(){
 
   const fotoLocal = (state.data.config && state.data.config.fotoLocal) || null;
   const vistasPublicas = ['welcome','login','registro','loading'];
+
+  // Aplicar foto del local como fondo en vistas públicas
   if(fotoLocal && vistasPublicas.includes(state.view)){
-    document.body.style.backgroundImage = `linear-gradient(rgba(10,14,30,0.78), rgba(10,14,30,0.88)), url('${fotoLocal}')`;
+    // Usar template string correcto para evitar problemas con comillas
+    const bgImage = `linear-gradient(rgba(10,14,30,0.78), rgba(10,14,30,0.88)), url("${fotoLocal}")`;
+    document.body.style.backgroundImage = bgImage;
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundAttachment = 'fixed';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    console.log('✅ Fondo aplicado - Vista:', state.view, '- Foto:', fotoLocal.substring(0, 50) + '...');
   } else {
     document.body.style.backgroundImage = '';
     document.body.style.backgroundSize = '';
     document.body.style.backgroundPosition = '';
     document.body.style.backgroundAttachment = '';
+    document.body.style.backgroundRepeat = '';
+    if(vistasPublicas.includes(state.view) && !fotoLocal){
+      console.log('⚠️ Vista pública pero sin foto del local configurada');
+    }
   }
 
   $('#app').innerHTML = html;
