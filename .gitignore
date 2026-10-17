@@ -70,6 +70,18 @@ build/
 # Archivos específicos del proyecto que no deben subirse
 autocontrol.sql
 Autocontrol ACTUALIZADO.7z
+*.7z
+
+# Archivos de diagnóstico y temporales del proyecto
+SOLUCION_RAPIDA.md
+SOLUCION_PROBLEMAS.md
+diagnostico.bat
+verificar_db.php
+test.php
+temp_*/
+
+# Configuración local de Claude
+.claude/settings.json
 
 # Mantener directorios vacíos
 !.gitkeep

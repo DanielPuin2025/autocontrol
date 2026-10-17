@@ -5,7 +5,14 @@
       "Bash(php --ini)",
       "Bash(php -i)",
       "Bash(ls -la \"C:\\\\php\\\\ext\" | grep -i \"mysql\\\\|pdo\" | head -10)",
-      "Read(//c/php/**)"
+      "Read(//c/php/**)",
+      "Bash(git commit -m ' *)",
+      "Bash(ls -la C:/xampp/htdocs/autocontrol/ 2>/dev/null | head -20 || echo \"Directorio no encontrado\")",
+      "Read(//c/xampp/htdocs/autocontrol/**)",
+      "Bash(rm -f \"Autocontrol ACTUALIZADO.7z\" autocontrol.sql test.php verificar_db.php diagnostico.bat SOLUCION_RAPIDA.md SOLUCION_PROBLEMAS.md)"
+    ],
+    "additionalDirectories": [
+      "C:\\xampp\\htdocs\\Autocontrol"
     ]
   }
 }
