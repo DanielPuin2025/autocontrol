@@ -124,18 +124,17 @@ function withTimeout(promise, ms){
   ]);
 }
 
-/* Capa de almacenamiento con respaldo automático:
-   1) intenta el almacenamiento de Claude.ai (window.storage), para cuando se usa dentro del chat.
-   2) intenta la API PHP (carpeta Backend/api.php) conectada a MySQL.
-   3) si todo falla, usa localStorage del navegador como último respaldo.
-   Todo va protegido con try/catch: si un método falla, simplemente se usa el siguiente. */
+/* MySQL es el almacenamiento principal. El almacenamiento del navegador solo
+   se usa como respaldo y nunca cuenta como confirmación de guardado remoto. */
 const API_URL = '../Backend/api.php';
+let storageBackendError = null;
+let storageNeedsSync = false;
 
 async function phpGet(key){
   const res = await withTimeout(fetch(`${API_URL}?clave=${encodeURIComponent(key)}`), 4000);
-  if(!res.ok) throw new Error('api.php respondió con error');
+  if(!res.ok) throw new Error('La API de almacenamiento respondió con error.');
   const data = await res.json();
-  return data.valor || null;
+  return data.valor ?? null;
 }
 async function phpSet(key, value){
   const res = await withTimeout(fetch(API_URL, {
@@ -143,37 +142,64 @@ async function phpSet(key, value){
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({clave: key, valor: value})
   }), 4000);
-  if(!res.ok) throw new Error('api.php respondió con error');
+  if(!res.ok) throw new Error('La API de almacenamiento respondió con error.');
+  const data = await res.json();
+  if(data.ok !== true) throw new Error(data.error || 'La API no confirmó el guardado.');
 }
 
 async function storageGet(key){
+  let remoteValue;
+  try{
+    remoteValue = await phpGet(key);
+    storageBackendError = null;
+    if(remoteValue !== null){
+      try{ localStorage.setItem(key, remoteValue); }catch(e){}
+      return remoteValue;
+    }
+    storageNeedsSync = true;
+  }catch(e){
+    storageBackendError = e;
+    storageNeedsSync = true;
+    console.error('No se pudieron leer los datos de MySQL.', e);
+  }
   try{
     if(window.storage && typeof window.storage.get === 'function'){
       const res = await withTimeout(window.storage.get(key, false), 3000);
-      if(res && res.value) return res.value;
+      if(res && res.value){
+        storageNeedsSync = true;
+        return res.value;
+      }
     }
   }catch(e){}
   try{
-    const v = await phpGet(key);
-    if(v) return v;
-  }catch(e){}
-  try{
     const v = localStorage.getItem(key);
-    if(v) return v;
+    if(v){
+      storageNeedsSync = true;
+      return v;
+    }
   }catch(e){}
   return null;
 }
 async function storageSet(key, value){
-  let ok = false;
+  try{
+    await phpSet(key, value);
+    storageBackendError = null;
+    storageNeedsSync = false;
+  }catch(e){
+    storageBackendError = e;
+    try{ localStorage.setItem(key, value); }catch(cacheError){
+      console.error('No se pudo actualizar el respaldo local.', cacheError);
+    }
+    console.error('No se pudieron guardar los datos en MySQL.', e);
+    throw new Error('No se guardó en la base de datos de EasyPanel. Verifica AUTOCTRL_DB_* y que exista la tabla almacenamiento.');
+  }
   try{
     if(window.storage && typeof window.storage.set === 'function'){
       await withTimeout(window.storage.set(key, value, false), 3000);
-      ok = true;
     }
   }catch(e){}
-  try{ await phpSet(key, value); ok = true; }catch(e){}
-  try{ localStorage.setItem(key, value); ok = true; }catch(e){}
-  return ok;
+  try{ localStorage.setItem(key, value); }catch(e){}
+  return true;
 }
 
 /* Genera precios por cantidad (1/4, 2/4, 3/4, 1 galón) a partir del precio
@@ -239,6 +265,7 @@ function reglasRecordatorioPredeterminadas(){
 }
 
 async function loadData(){
+  let shouldSaveInitialData = false;
   try{
     const raw = await storageGet(STORAGE_KEY);
     state.data = raw ? JSON.parse(raw) : seedData();
@@ -254,16 +281,26 @@ async function loadData(){
     const huboCambios5 = !state.data.config.recordatoriosAutomaticos;
     if(huboCambios5) state.data.config.recordatoriosAutomaticos = {activo:false, ultimaRevision:null};
     const huboCambios6 = normalizarMantenimientos();
-    if(!raw || huboCambios1 || huboCambios2 || huboCambios3 || huboCambios4 || huboCambios5 || huboCambios6) persist();
+    shouldSaveInitialData = !raw || storageNeedsSync || huboCambios1 || huboCambios2 || huboCambios3 || huboCambios4 || huboCambios5 || huboCambios6;
   }catch(e){
     state.data = seedData();
   }
   state.view = 'welcome';
   render();
+  if(shouldSaveInitialData){
+    try{
+      await persist();
+    }catch(e){
+      showToast(e.message, true);
+      return;
+    }
+  }
+  if(storageBackendError){
+    showToast('No hay conexión con la base de datos. Los datos de esta sesión podrían no guardarse en EasyPanel.', true);
+  }
 }
 async function persist(){
-  try{ await storageSet(STORAGE_KEY, JSON.stringify(state.data)); }
-  catch(e){ console.error('No se pudo guardar', e); }
+  await storageSet(STORAGE_KEY, JSON.stringify(state.data));
 }
 
 /* ================= HELPERS ================= */

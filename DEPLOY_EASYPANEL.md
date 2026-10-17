@@ -44,10 +44,46 @@ Si la tabla `almacenamiento` está vacía, el frontend crea datos de demostraci�
 - Las variables de base de datos se configuran en EasyPanel; no las añadas a archivos del repositorio.
 - Si cambias la estructura de la app, vuelve a desplegar desde el repositorio y verifica la conexión a la base de datos.
 
+## Verificar que se está guardando en MySQL
+
+1. Abre `https://autocontrol.programamega.com/Backend/api.php?clave=autocontrol_data_v1`.
+   Si la conexión está bien, responde JSON, por ejemplo `{"valor":null}` cuando aún no
+   hay datos. Un error HTTP indica que debes revisar las variables `AUTOCTRL_DB_*`,
+   que la tabla `almacenamiento` exista y que el servicio MySQL sea accesible desde la app.
+2. Guarda un cambio en la aplicación y vuelve a consultar la URL. La respuesta debe
+   incluir un valor JSON no nulo.
+3. Si aparece el aviso de que no hay conexión, el navegador puede conservar un respaldo
+   local, pero la aplicación no confirma el cambio como guardado en MySQL. Revisa los
+   registros del servicio de la aplicación en EasyPanel para ver el error de conexión.
+
 ## Recordatorios de WhatsApp
 
 Los recordatorios no se ejecutan automáticamente dentro del servicio web. Para habilitarlos, configura una tarea programada de PHP CLI con `Backend/procesar_recordatorios.php`, con las mismas variables `AUTOCTRL_DB_*` y las variables `AUTOCTRL_WA_*` descritas en [Backend/RECORDATORIOS_WHATSAPP.md](Backend/RECORDATORIOS_WHATSAPP.md). No añadas tokens de WhatsApp al frontend ni al repositorio.
 
+## APIs REST Disponibles
+
+El proyecto incluye APIs REST completas para gestión de datos persistentes:
+
+- `/Backend/api_clientes.php` - Gestión de clientes
+- `/Backend/api_vehiculos.php` - Gestión de vehículos (placas)
+- `/Backend/api_servicios.php` - Catálogo de servicios
+- `/Backend/api_usuarios.php` - Usuarios y autenticación
+- `/Backend/api_mantenimientos.php` - Historial de mantenimientos
+- `/Backend/api_facturas.php` - Facturas con detalles
+
+Ver `Backend/README_API.md` para documentación completa de endpoints, parámetros y ejemplos de uso.
+
+**Nota:** Las nuevas APIs guardan datos directamente en tablas MySQL estructuradas, proporcionando persistencia completa. La API original `api.php` (almacenamiento JSON) se mantiene por compatibilidad.
+
 ## Pruebas locales
 
 La imagen requiere Docker para construir y ejecutar. También puedes probar la app con PHP, PDO MySQL y Apache; el frontend espera que `Frontend` y `Backend` conserven esos nombres y que la API esté disponible en `../Backend/api.php`.
+
+Para probar las nuevas APIs REST localmente:
+
+```bash
+# Con XAMPP o similar, las APIs estarán disponibles en:
+http://localhost/autocontrol/Backend/api_clientes.php
+http://localhost/autocontrol/Backend/api_vehiculos.php
+# ... etc
+```
