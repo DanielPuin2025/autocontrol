@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -m)",
+      "Bash(php --ini)",
+      "Bash(php -i)",
+      "Bash(ls -la \"C:\\\\php\\\\ext\" | grep -i \"mysql\\\\|pdo\" | head -10)",
+      "Read(//c/php/**)"
+    ]
+  }
+}

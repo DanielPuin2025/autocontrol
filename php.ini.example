@@ -1,0 +1,28 @@
+; Configuración mínima de PHP para AutoControl
+; Copiar este archivo como php.ini en el directorio de PHP
+
+[PHP]
+extension_dir = "C:\php\ext"
+
+; Extensiones requeridas para AutoControl
+extension=pdo_mysql
+extension=mysqli
+extension=mbstring
+extension=curl
+extension=openssl
+extension=fileinfo
+
+; Configuración de errores (desarrollo)
+display_errors = On
+error_reporting = E_ALL
+log_errors = On
+
+; Configuración de MySQL
+[MySQL]
+mysql.allow_local_infile = On
+
+[Date]
+date.timezone = "America/Bogota"
+
+; Seguridad
+expose_php = Off
