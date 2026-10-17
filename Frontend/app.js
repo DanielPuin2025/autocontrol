@@ -2124,11 +2124,58 @@ function onConfigLogoChange(input){
 function onConfigFotoLocalChange(input){
   const file = input.files && input.files[0];
   if(!file) return;
+
+  // Validar tamaño del archivo (máximo 5MB)
+  if(file.size > 5 * 1024 * 1024){
+    showToast('La imagen es demasiado grande. Máximo 5MB.', true);
+    input.value = '';
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = function(e){
-    state.data.config.fotoLocal = e.target.result;
-    persist();
-    render();
+    const img = new Image();
+    img.onload = function(){
+      // Comprimir la imagen a un tamaño máximo
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Reducir resolución si es muy grande (máximo 1920x1080)
+      let width = img.width;
+      let height = img.height;
+      const maxWidth = 1920;
+      const maxHeight = 1080;
+
+      if(width > maxWidth || height > maxHeight){
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.floor(width * ratio);
+        height = Math.floor(height * ratio);
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convertir a JPEG con calidad 0.8 para reducir tamaño
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+      // Verificar que el resultado no sea demasiado grande (máximo 500KB en base64)
+      if(compressedDataUrl.length > 500 * 1024){
+        showToast('La imagen es demasiado grande incluso después de comprimirla. Usa una imagen más pequeña.', true);
+        input.value = '';
+        return;
+      }
+
+      state.data.config.fotoLocal = compressedDataUrl;
+      persist();
+      render();
+      showToast('Foto del local cargada correctamente.');
+    };
+    img.onerror = function(){
+      showToast('Error al cargar la imagen. Verifica que sea un archivo válido.', true);
+      input.value = '';
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
