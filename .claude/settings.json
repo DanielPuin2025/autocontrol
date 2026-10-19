@@ -11,7 +11,8 @@
       "Read(//c/xampp/htdocs/autocontrol/**)",
       "Bash(rm -f \"Autocontrol ACTUALIZADO.7z\" autocontrol.sql test.php verificar_db.php diagnostico.bat SOLUCION_RAPIDA.md SOLUCION_PROBLEMAS.md)",
       "WebFetch(domain:autocontrol.programamega.com)",
-      "Bash(git commit -m 'Mejorar aplicación de foto de fondo con debugging *)"
+      "Bash(git commit -m 'Mejorar aplicación de foto de fondo con debugging *)",
+      "Bash(git commit -m 'Solución definitiva para foto de fondo del local *)"
     ],
     "additionalDirectories": [
       "C:\\xampp\\htdocs\\Autocontrol"

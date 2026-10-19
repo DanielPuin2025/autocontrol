@@ -2129,7 +2129,7 @@ function onConfigLogoChange(input){
   };
   reader.readAsDataURL(file);
 }
-function onConfigFotoLocalChange(input){
+async function onConfigFotoLocalChange(input){
   const file = input.files && input.files[0];
   if(!file) return;
 
@@ -2140,44 +2140,64 @@ function onConfigFotoLocalChange(input){
     return;
   }
 
+  showToast('Procesando imagen...');
+
   const reader = new FileReader();
-  reader.onload = function(e){
+  reader.onload = async function(e){
     const img = new Image();
-    img.onload = function(){
-      // Comprimir la imagen a un tamaño máximo
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+    img.onload = async function(){
+      try {
+        // Comprimir la imagen a un tamaño máximo
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
 
-      // Reducir resolución si es muy grande (máximo 1920x1080)
-      let width = img.width;
-      let height = img.height;
-      const maxWidth = 1920;
-      const maxHeight = 1080;
+        // Reducir resolución (máximo 1280x720 para mejor rendimiento)
+        let width = img.width;
+        let height = img.height;
+        const maxWidth = 1280;
+        const maxHeight = 720;
 
-      if(width > maxWidth || height > maxHeight){
-        const ratio = Math.min(maxWidth / width, maxHeight / height);
-        width = Math.floor(width * ratio);
-        height = Math.floor(height * ratio);
-      }
+        if(width > maxWidth || height > maxHeight){
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
 
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(img, 0, 0, width, height);
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
 
-      // Convertir a JPEG con calidad 0.8 para reducir tamaño
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        // Intentar con calidad 0.7 primero
+        let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
 
-      // Verificar que el resultado no sea demasiado grande (máximo 500KB en base64)
-      if(compressedDataUrl.length > 500 * 1024){
-        showToast('La imagen es demasiado grande incluso después de comprimirla. Usa una imagen más pequeña.', true);
+        // Si sigue siendo muy grande, reducir calidad
+        if(compressedDataUrl.length > 300 * 1024){
+          compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        }
+
+        // Verificar tamaño final (máximo 300KB en base64)
+        if(compressedDataUrl.length > 300 * 1024){
+          showToast('La imagen es demasiado grande. Usa una foto más pequeña o con menos detalles.', true);
+          input.value = '';
+          return;
+        }
+
+        state.data.config.fotoLocal = compressedDataUrl;
+
+        // Guardar y verificar
+        try {
+          await persist();
+          showToast('✓ Foto del local guardada correctamente.');
+          render();
+        } catch(error) {
+          showToast('Error al guardar la foto: ' + error.message, true);
+          state.data.config.fotoLocal = null;
+          input.value = '';
+        }
+      } catch(error) {
+        showToast('Error al procesar la imagen: ' + error.message, true);
         input.value = '';
-        return;
       }
-
-      state.data.config.fotoLocal = compressedDataUrl;
-      persist();
-      render();
-      showToast('Foto del local cargada correctamente.');
     };
     img.onerror = function(){
       showToast('Error al cargar la imagen. Verifica que sea un archivo válido.', true);

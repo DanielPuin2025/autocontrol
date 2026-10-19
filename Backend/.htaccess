@@ -1,0 +1,30 @@
+# Configuración para AutoControl
+# Aumentar límites para permitir guardar imágenes grandes
+
+# Tamaño máximo de POST (debe ser mayor que upload_max_filesize)
+php_value post_max_size 20M
+
+# Tamaño máximo de archivo subido
+php_value upload_max_filesize 20M
+
+# Tiempo máximo de ejecución
+php_value max_execution_time 60
+
+# Memoria máxima
+php_value memory_limit 256M
+
+# Configuración de errores (producción)
+php_flag display_errors Off
+php_flag log_errors On
+
+# Protección de archivos sensibles
+<FilesMatch "\.(sql|md|bat|json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Permitir acceso a archivos necesarios
+<FilesMatch "^(manifest\.json|package\.json)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>

@@ -41,17 +41,38 @@ if ($metodo === 'POST') {
         exit;
     }
 
-    $stmt = $pdo->prepare(
-        'INSERT INTO almacenamiento (clave, valor) VALUES (:clave, :valor)
-         ON DUPLICATE KEY UPDATE valor = :valor2'
-    );
-    $stmt->execute([
-        ':clave'  => $clave,
-        ':valor'  => $valor,
-        ':valor2' => $valor,
-    ]);
+    // Verificar tamaño del valor (máximo 10MB)
+    $valorSize = strlen($valor);
+    if ($valorSize > 10 * 1024 * 1024) {
+        http_response_code(413);
+        echo json_encode([
+            'error' => 'Los datos son demasiado grandes',
+            'size' => round($valorSize / (1024 * 1024), 2) . ' MB',
+            'max' => '10 MB'
+        ]);
+        exit;
+    }
 
-    echo json_encode(['ok' => true]);
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO almacenamiento (clave, valor) VALUES (:clave, :valor)
+             ON DUPLICATE KEY UPDATE valor = :valor2'
+        );
+        $stmt->execute([
+            ':clave'  => $clave,
+            ':valor'  => $valor,
+            ':valor2' => $valor,
+        ]);
+
+        echo json_encode(['ok' => true]);
+    } catch (PDOException $e) {
+        error_log('Error al guardar en almacenamiento: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'Error al guardar en la base de datos',
+            'details' => $e->getMessage()
+        ]);
+    }
     exit;
 }
 
