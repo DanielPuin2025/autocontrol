@@ -1085,47 +1085,101 @@ async function saveServicio(ev){
   };
   if(esAceite){ payload.tipoAceite = tipoAceite; payload.opcionesCantidad = opcionesCantidad; }
 
-  let servicioId;
-  if(id){
-    const existing = state.data.servicios.find(x=>x.id===id);
-    delete existing.tipoAceite; delete existing.opcionesCantidad;
-    Object.assign(existing, payload);
-    recalcularMantenimientosServicio(id);
-    servicioId = id;
-  }
-  else {
-    servicioId = uid();
-    state.data.servicios.push({id:servicioId, ...payload});
-  }
+  try {
+    showToast('Guardando servicio...');
 
-  // Guardar imagen en tabla dedicada si hay una nueva
-  if(state.servicioImagenTemp && state.servicioImagenTemp !== '__REMOVE__') {
-    try {
-      await fetch(API_IMAGENES_URL, {
+    // Preparar datos para MySQL
+    const servicioData = {
+      nombre_servicio: nombre,
+      descripcion: f.descripcion.value.trim(),
+      precio: precio,
+      duracion_km: intervaloKm,
+      duracion_dias: intervaloDias,
+      estado: 'activo'
+    };
+
+    let servicioId;
+    let idNumerico;
+
+    if(id){
+      // ACTUALIZAR servicio existente
+      idNumerico = id.replace('s', '');
+      const resUpdate = await fetch(`../Backend/api_servicios.php?id=${idNumerico}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(servicioData)
+      });
+
+      if(!resUpdate.ok) {
+        throw new Error('Error al actualizar servicio en MySQL');
+      }
+
+      servicioId = id;
+
+      // Actualizar en caché local también
+      const existing = state.data.servicios.find(x=>x.id===id);
+      if(existing) {
+        delete existing.tipoAceite;
+        delete existing.opcionesCantidad;
+        Object.assign(existing, payload);
+      }
+      recalcularMantenimientosServicio(id);
+
+    } else {
+      // CREAR nuevo servicio
+      const resCreate = await fetch('../Backend/api_servicios.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          tipo: 'foto_servicio',
-          imagen: state.servicioImagenTemp,
-          referencia: servicioId
-        })
+        body: JSON.stringify(servicioData)
       });
-      console.log('✓ Imagen del servicio guardada en MySQL');
-    } catch(e) {
-      console.warn('No se pudo guardar imagen en tabla dedicada:', e);
-      // Fallback: guardar en JSON
-      if(id){
-        state.data.servicios.find(x=>x.id===id).imagen = state.servicioImagenTemp;
-      } else {
-        state.data.servicios.find(x=>x.id===servicioId).imagen = state.servicioImagenTemp;
+
+      if(!resCreate.ok) {
+        throw new Error('Error al crear servicio en MySQL');
+      }
+
+      const result = await resCreate.json();
+      idNumerico = result.id;
+      servicioId = 's' + idNumerico;
+
+      // Agregar a caché local
+      state.data.servicios.push({id:servicioId, ...payload});
+    }
+
+    // Guardar imagen en tabla dedicada si hay una nueva
+    if(state.servicioImagenTemp && state.servicioImagenTemp !== '__REMOVE__') {
+      try {
+        await fetch(API_IMAGENES_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            tipo: 'foto_servicio',
+            imagen: state.servicioImagenTemp,
+            referencia: servicioId
+          })
+        });
+        console.log('✅ Imagen del servicio guardada en MySQL');
+      } catch(e) {
+        console.warn('No se pudo guardar imagen en tabla dedicada:', e);
       }
     }
-  }
 
-  state.servicioImagenTemp = null;
-  await persist();
-  closeForm();
-  openSuccess(id ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.');
+    // Recargar datos desde MySQL
+    await cargarDatosDesdeMySQL();
+
+    // Guardar también en JSON como respaldo
+    await persist();
+
+    state.servicioImagenTemp = null;
+    closeForm();
+    openSuccess(id ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.');
+    render();
+
+    console.log('✅ Servicio guardado en MySQL:', servicioId);
+
+  } catch(error) {
+    console.error('❌ Error guardando servicio:', error);
+    showToast('Error al guardar: ' + error.message, true);
+  }
 }
 
 async function saveCliente(ev){
@@ -1143,15 +1197,91 @@ async function saveCliente(ev){
     return;
   }
   const id = f.dataset.id;
-  const payload = { nombre, telefono, correo: f.correo.value.trim(), placa, vehiculo, whatsappConsent };
 
-  // Guardar localmente (sistema actual)
-  if(id){ Object.assign(state.data.clientes.find(x=>x.id===id), payload); }
-  else { state.data.clientes.push({id:uid(), ...payload}); }
+  try {
+    showToast('Guardando cliente...');
 
-  await persist();
-  closeForm();
-  openSuccess(id ? 'Cliente actualizado correctamente.' : 'Cliente registrado correctamente.');
+    // Separar nombre y apellido
+    const partesNombre = nombre.split(' ');
+    const nombreParte = partesNombre[0];
+    const apellidoParte = partesNombre.slice(1).join(' ') || '';
+
+    // Preparar datos del cliente para MySQL
+    const clienteData = {
+      nombre: nombreParte,
+      apellido: apellidoParte,
+      documento: f.documento?.value || '',
+      telefono: telefono,
+      whatsapp: whatsappConsent ? telefono : null,
+      correo: f.correo.value.trim()
+    };
+
+    let clienteId;
+    let idNumerico;
+
+    if(id) {
+      // ACTUALIZAR cliente existente
+      idNumerico = id.replace('c', '');
+      const resUpdate = await fetch(`../Backend/api_clientes.php?id=${idNumerico}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(clienteData)
+      });
+
+      if(!resUpdate.ok) {
+        throw new Error('Error al actualizar cliente en MySQL');
+      }
+
+      clienteId = id;
+    } else {
+      // CREAR nuevo cliente
+      const resCreate = await fetch('../Backend/api_clientes.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(clienteData)
+      });
+
+      if(!resCreate.ok) {
+        throw new Error('Error al crear cliente en MySQL');
+      }
+
+      const result = await resCreate.json();
+      idNumerico = result.id;
+      clienteId = 'c' + idNumerico;
+    }
+
+    // Guardar vehículo asociado
+    const vehiculoData = {
+      id_cliente: idNumerico,
+      placa: placa.toUpperCase(),
+      tipo_vehiculo: convertirTipoVehiculoADB(vehiculo),
+      marca: '',
+      modelo: '',
+      anio: null
+    };
+
+    await fetch('../Backend/api_vehiculos.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(vehiculoData)
+    });
+
+    // Recargar datos desde MySQL para actualizar caché
+    await cargarDatosDesdeMySQL();
+
+    // Guardar también en JSON como respaldo
+    await persist();
+
+    closeForm();
+    openSuccess(id ? 'Cliente actualizado correctamente.' : 'Cliente registrado correctamente.');
+    render();
+
+    console.log('✅ Cliente guardado en MySQL:', clienteId);
+
+  } catch(error) {
+    console.error('❌ Error guardando cliente:', error);
+    showToast('Error al guardar: ' + error.message, true);
+  }
 }
 
 async function saveAlerta(ev){
