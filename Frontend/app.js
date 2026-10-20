@@ -453,7 +453,7 @@ function serviciosNombres(ids){ return (ids&&ids.length) ? ids.map(servicioNombr
 function serviciosTotalPrecio(ids){ return (ids||[]).reduce((sum,id)=>sum+servicioPrecio(id),0); }
 function esc(str){ return String(str==null?'':str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function servicioVehiculosTxt(s){ return (s.vehiculos||[]).join(', ') || '—'; }
-async function servicioImagenHtml(s, size){
+function servicioImagenHtml(s, size){
   const sz = size||44;
 
   // Si tiene imagen en base64, mostrarla directamente
@@ -463,21 +463,28 @@ async function servicioImagenHtml(s, size){
 
   // Si tiene marcador 'DB', cargar desde la tabla imagenes
   if(s && s.imagen === 'DB' && s.id) {
-    // Verificar si ya tenemos la imagen en caché
+    // Si ya tenemos la imagen en caché, mostrarla
     if(s._imagenCargada) {
       return '<img src="'+s._imagenCargada+'" alt="'+esc(s.nombre)+'" style="width:'+sz+'px;height:'+sz+'px;object-fit:cover;border-radius:10px;border:1.5px solid var(--border);flex-shrink:0;">';
     }
 
-    // Cargar imagen desde API (async)
-    fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${s.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if(data && data.data_url) {
-          s._imagenCargada = data.data_url;
-          render(); // Re-renderizar para mostrar la imagen
-        }
-      })
-      .catch(e => console.warn('Error cargando imagen:', e));
+    // Si no está cargada, iniciar carga (solo una vez)
+    if(!s._cargandoImagen) {
+      s._cargandoImagen = true;
+      fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${s.id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if(data && data.data_url) {
+            s._imagenCargada = data.data_url;
+            s._cargandoImagen = false;
+            render(); // Re-renderizar para mostrar la imagen
+          }
+        })
+        .catch(e => {
+          console.warn('Error cargando imagen:', e);
+          s._cargandoImagen = false;
+        });
+    }
 
     // Mostrar ícono mientras carga
     const icono = s.categoria==='Cambio de aceite' ? '🛢️' : s.categoria==='Filtros' ? '🔧' : s.categoria==='Frenos' ? '🛑' : s.categoria==='Cambio de llantas' ? '🛞' : s.categoria==='Suspensión' ? '🔩' : '⚙️';
