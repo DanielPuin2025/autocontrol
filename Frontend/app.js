@@ -310,11 +310,27 @@ function normalizarTextoServicio(texto){
 }
 function servicioClaveParaComparacion(servicio){
   const nombre = normalizarTextoServicio(servicio?.nombre || servicio?.nombre_servicio || '');
-  const categoria = normalizarTextoServicio(servicio?.categoria || '');
   const precio = Number(servicio?.precio || 0);
-  const km = Number(servicio?.intervaloKm || servicio?.duracion_km || 0);
-  const dias = Number(servicio?.intervaloDias || servicio?.duracion_dias || 0);
-  return `${nombre}|${Number.isFinite(precio) ? precio.toFixed(2) : '0.00'}|${categoria}|${km}|${dias}`;
+  return `${nombre}|${Number.isFinite(precio) ? precio.toFixed(2) : '0.00'}`;
+}
+function servicioClaveConVehiculos(servicio){
+  const base = servicioClaveParaComparacion(servicio);
+  const vehiculos = Array.isArray(servicio?.vehiculos) ? [...new Set(servicio.vehiculos)].sort().join(',') : '';
+  return `${base}|${vehiculos}`;
+}
+function buscarServicioLocalRelacionado(servicioDB, serviciosLocales){
+  const locales = serviciosLocales || [];
+  const clave = servicioClaveParaComparacion(servicioDB);
+  const exactos = locales.filter(local => servicioClaveParaComparacion(local) === clave);
+  if(exactos.length === 1) return exactos[0];
+  if(exactos.length > 1){
+    const conVehiculos = exactos.find(local => Array.isArray(local.vehiculos) && local.vehiculos.length);
+    if(conVehiculos) return conVehiculos;
+    return exactos[0];
+  }
+  const nombreDB = normalizarTextoServicio(servicioDB?.nombre_servicio || '');
+  const mismoNombre = locales.filter(local => normalizarTextoServicio(local?.nombre || '') === nombreDB);
+  return mismoNombre.length === 1 ? mismoNombre[0] : null;
 }
 function inferirVehiculosServicio(servicio, servicioLocal){
   if (Array.isArray(servicioLocal?.vehiculos) && servicioLocal.vehiculos.length) {
@@ -326,13 +342,16 @@ function inferirVehiculosServicio(servicio, servicioLocal){
 
   if (/(moto|motocicleta|motorcycle)/.test(texto)) vehiculos.push('Motocicleta');
   if (/(camioneta|pickup|van)/.test(texto)) vehiculos.push('Camioneta');
-  if (/(automovil|automóvil|carro|auto|vehiculo|vehículo)/.test(texto)) vehiculos.push('Automóvil');
-
-  if (!vehiculos.length) {
+  if (/(automovil|carro|auto)/.test(texto)) vehiculos.push('Automóvil');
+  if (/(todos los vehiculos|todo tipo de vehiculos|multivehiculo|multimarca)/.test(texto)) {
     return ['Automóvil', 'Camioneta', 'Motocicleta'];
   }
 
-  return vehiculos;
+  if (!vehiculos.length) {
+    return ['Automóvil', 'Camioneta'];
+  }
+
+  return [...new Set(vehiculos)];
 }
 function convertirServiciosDesdeMySQL(serviciosDB, serviciosLocales = []){
   const serviciosSinDuplicar = [];
@@ -346,7 +365,7 @@ function convertirServiciosDesdeMySQL(serviciosDB, serviciosLocales = []){
   });
 
   return serviciosSinDuplicar.map(s => {
-    const localMatch = (serviciosLocales || []).find(local => servicioClaveParaComparacion(local) === servicioClaveParaComparacion(s));
+    const localMatch = buscarServicioLocalRelacionado(s, serviciosLocales);
     const vehiculos = inferirVehiculosServicio(s, localMatch);
 
     return {
@@ -386,8 +405,8 @@ async function cargarDatosDesdeMySQL(){
       const serviciosDB = await resServicios.json();
       const serviciosLocales = state.data.servicios || [];
       const serviciosMySQL = convertirServiciosDesdeMySQL(serviciosDB, serviciosLocales);
-      const serviciosMySQLKeys = new Set(serviciosMySQL.map(s => servicioClaveParaComparacion(s)));
-      const serviciosLocalesSinDuplicar = serviciosLocales.filter(s => !serviciosMySQLKeys.has(servicioClaveParaComparacion(s)));
+      const serviciosMySQLKeys = new Set(serviciosMySQL.map(s => servicioClaveConVehiculos(s)));
+      const serviciosLocalesSinDuplicar = serviciosLocales.filter(s => !serviciosMySQLKeys.has(servicioClaveConVehiculos(s)));
 
       // Combinar: MySQL + locales únicos
       state.data.servicios = [...serviciosMySQL, ...serviciosLocalesSinDuplicar];
@@ -1103,6 +1122,7 @@ async function saveServicio(ev){
   }
   let imagenFinal = null;
   const existingForImg = id ? state.data.servicios.find(x=>x.id===id) : null;
+  const hayNuevaImagen = typeof state.servicioImagenTemp === 'string' && state.servicioImagenTemp.startsWith('data:');
 
   // Gestionar imagen: guardar en tabla dedicada si hay una nueva
   if(state.servicioImagenTemp === '__REMOVE__') {
@@ -1115,7 +1135,7 @@ async function saveServicio(ev){
         console.warn('No se pudo eliminar imagen:', e);
       }
     }
-  } else if(state.servicioImagenTemp) {
+  } else if(hayNuevaImagen) {
     // Hay una nueva imagen para guardar
     imagenFinal = 'DB'; // Marcador que indica "está en la tabla imagenes"
 
@@ -1192,10 +1212,11 @@ async function saveServicio(ev){
       state.data.servicios.push({id:servicioId, ...payload});
     }
 
-    // Guardar imagen en tabla dedicada si hay una nueva
-    if(state.servicioImagenTemp && state.servicioImagenTemp !== '__REMOVE__') {
+    // Guardar imagen en tabla dedicada solo cuando realmente hay una imagen nueva (base64)
+    let falloImagen = null;
+    if(hayNuevaImagen) {
       try {
-        await fetch(API_IMAGENES_URL, {
+        const resImagen = await fetch(API_IMAGENES_URL, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
@@ -1204,8 +1225,15 @@ async function saveServicio(ev){
             referencia: servicioId
           })
         });
+        let payloadImagen = null;
+        try { payloadImagen = await resImagen.json(); } catch(_){}
+        if(!resImagen.ok || (payloadImagen && payloadImagen.ok === false)) {
+          const detalle = payloadImagen?.error || 'respuesta inválida del servidor';
+          throw new Error(detalle);
+        }
         console.log('✅ Imagen del servicio guardada en MySQL');
       } catch(e) {
+        falloImagen = e?.message || 'Error desconocido al guardar imagen';
         console.warn('No se pudo guardar imagen en tabla dedicada:', e);
       }
     }
@@ -1218,7 +1246,12 @@ async function saveServicio(ev){
 
     state.servicioImagenTemp = null;
     closeForm();
-    openSuccess(id ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.');
+    if(falloImagen){
+      showToast('Servicio guardado, pero la imagen no se pudo guardar: ' + falloImagen, true);
+      openSuccess(id ? 'Servicio actualizado (sin cambios en imagen).' : 'Servicio creado (sin imagen).');
+    } else {
+      openSuccess(id ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.');
+    }
     render();
 
     console.log('✅ Servicio guardado en MySQL:', servicioId);
