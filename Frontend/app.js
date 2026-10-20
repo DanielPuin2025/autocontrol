@@ -324,15 +324,27 @@ async function cargarDatosDesdeMySQL(){
     ]);
     let vehiculosDB = [];
     if(resVehiculos.ok) vehiculosDB = await resVehiculos.json();
+
+    // CLIENTES: Reemplazar con MySQL (datos frescos)
     if(resClientes.ok) {
       const clientesDB = await resClientes.json();
       state.data.clientes = convertirClientesDesdeMySQL(clientesDB, vehiculosDB);
       console.log('✅ Clientes cargados desde MySQL:', state.data.clientes.length);
     }
+
+    // SERVICIOS: COMBINAR MySQL + JSON local (no perder datos)
     if(resServicios.ok) {
       const serviciosDB = await resServicios.json();
-      state.data.servicios = convertirServiciosDesdeMySQL(serviciosDB);
-      console.log('✅ Servicios cargados desde MySQL:', state.data.servicios.length);
+      const serviciosMySQL = convertirServiciosDesdeMySQL(serviciosDB);
+
+      // Mantener servicios locales que no están en MySQL
+      const serviciosLocales = state.data.servicios || [];
+      const idsMySQL = new Set(serviciosMySQL.map(s => s.id));
+      const serviciosLocalesSinDuplicar = serviciosLocales.filter(s => !idsMySQL.has(s.id));
+
+      // Combinar: MySQL + locales únicos
+      state.data.servicios = [...serviciosMySQL, ...serviciosLocalesSinDuplicar];
+      console.log('✅ Servicios cargados:', serviciosMySQL.length, 'desde MySQL +', serviciosLocalesSinDuplicar.length, 'locales =', state.data.servicios.length, 'total');
     }
   } catch(e) {
     console.error('❌ Error cargando datos desde MySQL:', e);
