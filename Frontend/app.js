@@ -128,6 +128,7 @@ function withTimeout(promise, ms){
 /* MySQL es el almacenamiento principal. El almacenamiento del navegador solo
    se usa como respaldo y nunca cuenta como confirmación de guardado remoto. */
 const API_URL = '../Backend/api.php';
+const API_IMAGENES_URL = '../Backend/api_imagenes.php';
 let storageBackendError = null;
 let storageNeedsSync = false;
 
@@ -461,8 +462,64 @@ function servicioImagenHtml(s, size){
 function serviciosImagenesHtml(ids, size){
   return (ids||[]).map(id=>{ const s=state.data.servicios.find(x=>x.id===id); if(!s) return ''; return servicioImagenHtml(s, size); }).join(' ');
 }
-function onServicioImagenChange(input){
-  const file=input.files&&input.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=e=>{ state.servicioImagenTemp=e.target.result; const prev=document.getElementById('serv-img-preview'); if(prev){ prev.innerHTML='<img src="'+state.servicioImagenTemp+'" style="width:90px;height:90px;object-fit:cover;border-radius:12px;border:1.5px solid var(--border);">'; } }; reader.readAsDataURL(file);
+async function onServicioImagenChange(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+
+  // Validar tamaño
+  if(file.size > 3 * 1024 * 1024){
+    showToast('La imagen es muy grande. Máximo 3MB.', true);
+    input.value = '';
+    return;
+  }
+
+  showToast('Procesando imagen del servicio...');
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const img = new Image();
+    img.onload = async function(){
+      try {
+        // Comprimir imagen
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = img.width;
+        let height = img.height;
+        const maxSize = 800; // Servicios usan imágenes más pequeñas
+
+        if(width > maxSize || height > maxSize){
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+
+        // Guardar temporalmente para preview
+        state.servicioImagenTemp = compressedDataUrl;
+        const prev = document.getElementById('serv-img-preview');
+        if(prev){
+          prev.innerHTML = '<img src="'+compressedDataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:12px;border:1.5px solid var(--border);">';
+        }
+
+        showToast('✓ Imagen lista para guardar');
+      } catch(error) {
+        showToast('Error al procesar imagen: ' + error.message, true);
+        input.value = '';
+      }
+    };
+    img.onerror = function(){
+      showToast('Error al cargar la imagen', true);
+      input.value = '';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 function quitarServicioImagen(){ state.servicioImagenTemp='__REMOVE__'; const prev=document.getElementById('serv-img-preview'); if(prev) prev.innerHTML='<span style="color:var(--muted);font-size:13px;">Sin imagen (se mostrara icono)</span>'; const inp=document.getElementById('serv-img-input'); if(inp) inp.value=''; }
 
@@ -898,9 +955,26 @@ async function saveServicio(ev){
   }
   let imagenFinal = null;
   const existingForImg = id ? state.data.servicios.find(x=>x.id===id) : null;
-  if(state.servicioImagenTemp === '__REMOVE__') imagenFinal = null;
-  else if(state.servicioImagenTemp) imagenFinal = state.servicioImagenTemp;
-  else if(existingForImg) imagenFinal = existingForImg.imagen || null;
+
+  // Gestionar imagen: guardar en tabla dedicada si hay una nueva
+  if(state.servicioImagenTemp === '__REMOVE__') {
+    imagenFinal = null;
+    // Eliminar de la tabla si existe
+    if(id) {
+      try {
+        await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${id}`, { method: 'DELETE' });
+      } catch(e) {
+        console.warn('No se pudo eliminar imagen:', e);
+      }
+    }
+  } else if(state.servicioImagenTemp) {
+    // Hay una nueva imagen para guardar
+    imagenFinal = 'DB'; // Marcador que indica "está en la tabla imagenes"
+
+    // Guardar en tabla dedicada (se hará después de crear/actualizar el servicio)
+  } else if(existingForImg) {
+    imagenFinal = existingForImg.imagen || null;
+  }
   const payload = {
     nombre, categoria, vehiculos, precio,
     intervaloKm, intervaloDias,
@@ -909,15 +983,46 @@ async function saveServicio(ev){
     imagen: imagenFinal
   };
   if(esAceite){ payload.tipoAceite = tipoAceite; payload.opcionesCantidad = opcionesCantidad; }
+
+  let servicioId;
   if(id){
     const existing = state.data.servicios.find(x=>x.id===id);
     delete existing.tipoAceite; delete existing.opcionesCantidad;
     Object.assign(existing, payload);
     recalcularMantenimientosServicio(id);
+    servicioId = id;
   }
-  else { state.data.servicios.push({id:uid(), ...payload}); }
+  else {
+    servicioId = uid();
+    state.data.servicios.push({id:servicioId, ...payload});
+  }
+
+  // Guardar imagen en tabla dedicada si hay una nueva
+  if(state.servicioImagenTemp && state.servicioImagenTemp !== '__REMOVE__') {
+    try {
+      await fetch(API_IMAGENES_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          tipo: 'foto_servicio',
+          imagen: state.servicioImagenTemp,
+          referencia: servicioId
+        })
+      });
+      console.log('✓ Imagen del servicio guardada en MySQL');
+    } catch(e) {
+      console.warn('No se pudo guardar imagen en tabla dedicada:', e);
+      // Fallback: guardar en JSON
+      if(id){
+        state.data.servicios.find(x=>x.id===id).imagen = state.servicioImagenTemp;
+      } else {
+        state.data.servicios.find(x=>x.id===servicioId).imagen = state.servicioImagenTemp;
+      }
+    }
+  }
+
   state.servicioImagenTemp = null;
-  persist();
+  await persist();
   closeForm();
   openSuccess(id ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.');
 }
