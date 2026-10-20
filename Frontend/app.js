@@ -453,9 +453,38 @@ function serviciosNombres(ids){ return (ids&&ids.length) ? ids.map(servicioNombr
 function serviciosTotalPrecio(ids){ return (ids||[]).reduce((sum,id)=>sum+servicioPrecio(id),0); }
 function esc(str){ return String(str==null?'':str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function servicioVehiculosTxt(s){ return (s.vehiculos||[]).join(', ') || '—'; }
-function servicioImagenHtml(s, size){
+async function servicioImagenHtml(s, size){
   const sz = size||44;
-  if(s && s.imagen) return '<img src="'+s.imagen+'" alt="'+esc(s.nombre)+'" style="width:'+sz+'px;height:'+sz+'px;object-fit:cover;border-radius:10px;border:1.5px solid var(--border);flex-shrink:0;">';
+
+  // Si tiene imagen en base64, mostrarla directamente
+  if(s && s.imagen && s.imagen.startsWith('data:')) {
+    return '<img src="'+s.imagen+'" alt="'+esc(s.nombre)+'" style="width:'+sz+'px;height:'+sz+'px;object-fit:cover;border-radius:10px;border:1.5px solid var(--border);flex-shrink:0;">';
+  }
+
+  // Si tiene marcador 'DB', cargar desde la tabla imagenes
+  if(s && s.imagen === 'DB' && s.id) {
+    // Verificar si ya tenemos la imagen en caché
+    if(s._imagenCargada) {
+      return '<img src="'+s._imagenCargada+'" alt="'+esc(s.nombre)+'" style="width:'+sz+'px;height:'+sz+'px;object-fit:cover;border-radius:10px;border:1.5px solid var(--border);flex-shrink:0;">';
+    }
+
+    // Cargar imagen desde API (async)
+    fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${s.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if(data && data.data_url) {
+          s._imagenCargada = data.data_url;
+          render(); // Re-renderizar para mostrar la imagen
+        }
+      })
+      .catch(e => console.warn('Error cargando imagen:', e));
+
+    // Mostrar ícono mientras carga
+    const icono = s.categoria==='Cambio de aceite' ? '🛢️' : s.categoria==='Filtros' ? '🔧' : s.categoria==='Frenos' ? '🛑' : s.categoria==='Cambio de llantas' ? '🛞' : s.categoria==='Suspensión' ? '🔩' : '⚙️';
+    return '<span style="width:'+sz+'px;height:'+sz+'px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f8;border-radius:10px;font-size:'+Math.round(sz*0.5)+'px;flex-shrink:0;border:1.5px solid var(--border);">'+icono+'</span>';
+  }
+
+  // Sin imagen: mostrar ícono
   const icono = s && s.categoria==='Cambio de aceite' ? '🛢️' : s && s.categoria==='Filtros' ? '🔧' : s && s.categoria==='Frenos' ? '🛑' : s && s.categoria==='Cambio de llantas' ? '🛞' : s && s.categoria==='Suspensión' ? '🔩' : '⚙️';
   return '<span style="width:'+sz+'px;height:'+sz+'px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f8;border-radius:10px;font-size:'+Math.round(sz*0.5)+'px;flex-shrink:0;border:1.5px solid var(--border);">'+icono+'</span>';
 }
