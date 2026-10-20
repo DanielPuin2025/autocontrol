@@ -283,6 +283,30 @@ async function loadData(){
     if(huboCambios5) state.data.config.recordatoriosAutomaticos = {activo:false, ultimaRevision:null};
     const huboCambios6 = normalizarMantenimientos();
     shouldSaveInitialData = !raw || storageNeedsSync || huboCambios1 || huboCambios2 || huboCambios3 || huboCambios4 || huboCambios5 || huboCambios6;
+
+    // NUEVO: Cargar clientes desde MySQL API REST
+    try {
+      const resClientes = await fetch('../Backend/api_clientes.php');
+      if(resClientes.ok) {
+        const clientesMySQL = await resClientes.json();
+        if(clientesMySQL.length > 0) {
+          // Convertir formato MySQL a formato app
+          state.data.clientes = clientesMySQL.map(c => ({
+            id: 'c' + c.id_cliente,
+            nombre: (c.nombre + ' ' + (c.apellido || '')).trim(),
+            telefono: c.telefono || '',
+            correo: c.correo || '',
+            placa: '', // Se carga desde vehículos
+            vehiculo: 'Automóvil',
+            whatsappConsent: !!c.whatsapp
+          }));
+          console.log('✓ Clientes cargados desde MySQL:', state.data.clientes.length);
+        }
+      }
+    } catch(e) {
+      console.warn('No se pudieron cargar clientes desde MySQL:', e);
+    }
+
   }catch(e){
     state.data = seedData();
   }
@@ -914,9 +938,12 @@ async function saveCliente(ev){
   }
   const id = f.dataset.id;
   const payload = { nombre, telefono, correo: f.correo.value.trim(), placa, vehiculo, whatsappConsent };
+
+  // Guardar localmente (sistema actual)
   if(id){ Object.assign(state.data.clientes.find(x=>x.id===id), payload); }
   else { state.data.clientes.push({id:uid(), ...payload}); }
-  persist();
+
+  await persist();
   closeForm();
   openSuccess(id ? 'Cliente actualizado correctamente.' : 'Cliente registrado correctamente.');
 }
