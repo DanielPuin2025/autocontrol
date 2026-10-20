@@ -266,6 +266,79 @@ function reglasRecordatorioPredeterminadas(){
   ];
 }
 
+/* ================= FUNCIONES DE CONVERSIÓN MYSQL ================= */
+function convertirTipoVehiculoDesdeDB(tipoDB){
+  const mapa = {'carro':'Automóvil','automovil':'Automóvil','moto':'Motocicleta','motocicleta':'Motocicleta','camioneta':'Camioneta','otro':'Automóvil'};
+  return mapa[(tipoDB||'').toLowerCase()] || 'Automóvil';
+}
+function convertirTipoVehiculoADB(tipoApp){
+  const mapa = {'Automóvil':'carro','Motocicleta':'moto','Camioneta':'camioneta'};
+  return mapa[tipoApp] || 'carro';
+}
+function detectarCategoriaServicio(nombre){
+  const n = (nombre||'').toLowerCase();
+  if(n.includes('aceite')) return 'Cambio de aceite';
+  if(n.includes('filtro')) return 'Filtros';
+  if(n.includes('freno')) return 'Frenos';
+  if(n.includes('llanta')) return 'Cambio de llantas';
+  if(n.includes('suspension') || n.includes('suspensión')) return 'Suspensión';
+  if(n.includes('alineacion') || n.includes('alineación') || n.includes('balanceo')) return 'Alineación y balanceo';
+  return 'Mantenimiento';
+}
+function convertirClientesDesdeMySQL(clientesDB, vehiculosDB){
+  return clientesDB.map(c => {
+    const vehs = vehiculosDB ? vehiculosDB.filter(v => v.id_cliente == c.id_cliente) : [];
+    const primerVeh = vehs[0];
+    return {
+      id: 'c' + c.id_cliente,
+      nombre: `${c.nombre} ${c.apellido || ''}`.trim(),
+      telefono: c.telefono || '',
+      correo: c.correo || '',
+      placa: primerVeh ? primerVeh.placa : '',
+      vehiculo: primerVeh ? convertirTipoVehiculoDesdeDB(primerVeh.tipo_vehiculo) : 'Automóvil',
+      whatsappConsent: !!c.whatsapp
+    };
+  });
+}
+function convertirServiciosDesdeMySQL(serviciosDB){
+  return serviciosDB.map(s => ({
+    id: 's' + s.id_servicio,
+    nombre: s.nombre_servicio,
+    descripcion: s.descripcion || '',
+    precio: parseFloat(s.precio) || 0,
+    intervaloKm: s.duracion_km || 5000,
+    intervaloDias: s.duracion_dias || 180,
+    duracion: '30-45 min',
+    imagen: 'DB',
+    categoria: detectarCategoriaServicio(s.nombre_servicio),
+    vehiculos: ['Automóvil', 'Camioneta', 'Motocicleta'],
+    estado: s.estado || 'activo'
+  }));
+}
+async function cargarDatosDesdeMySQL(){
+  try {
+    const [resClientes, resVehiculos, resServicios] = await Promise.all([
+      fetch('../Backend/api_clientes.php').catch(()=>({ok:false})),
+      fetch('../Backend/api_vehiculos.php').catch(()=>({ok:false})),
+      fetch('../Backend/api_servicios.php').catch(()=>({ok:false}))
+    ]);
+    let vehiculosDB = [];
+    if(resVehiculos.ok) vehiculosDB = await resVehiculos.json();
+    if(resClientes.ok) {
+      const clientesDB = await resClientes.json();
+      state.data.clientes = convertirClientesDesdeMySQL(clientesDB, vehiculosDB);
+      console.log('✅ Clientes cargados desde MySQL:', state.data.clientes.length);
+    }
+    if(resServicios.ok) {
+      const serviciosDB = await resServicios.json();
+      state.data.servicios = convertirServiciosDesdeMySQL(serviciosDB);
+      console.log('✅ Servicios cargados desde MySQL:', state.data.servicios.length);
+    }
+  } catch(e) {
+    console.error('❌ Error cargando datos desde MySQL:', e);
+  }
+}
+
 async function loadData(){
   let shouldSaveInitialData = false;
   try{
@@ -285,28 +358,8 @@ async function loadData(){
     const huboCambios6 = normalizarMantenimientos();
     shouldSaveInitialData = !raw || storageNeedsSync || huboCambios1 || huboCambios2 || huboCambios3 || huboCambios4 || huboCambios5 || huboCambios6;
 
-    // NUEVO: Cargar clientes desde MySQL API REST
-    try {
-      const resClientes = await fetch('../Backend/api_clientes.php');
-      if(resClientes.ok) {
-        const clientesMySQL = await resClientes.json();
-        if(clientesMySQL.length > 0) {
-          // Convertir formato MySQL a formato app
-          state.data.clientes = clientesMySQL.map(c => ({
-            id: 'c' + c.id_cliente,
-            nombre: (c.nombre + ' ' + (c.apellido || '')).trim(),
-            telefono: c.telefono || '',
-            correo: c.correo || '',
-            placa: '', // Se carga desde vehículos
-            vehiculo: 'Automóvil',
-            whatsappConsent: !!c.whatsapp
-          }));
-          console.log('✓ Clientes cargados desde MySQL:', state.data.clientes.length);
-        }
-      }
-    } catch(e) {
-      console.warn('No se pudieron cargar clientes desde MySQL:', e);
-    }
+    // NUEVO: Cargar TODOS los datos desde MySQL
+    await cargarDatosDesdeMySQL();
 
   }catch(e){
     state.data = seedData();
