@@ -300,20 +300,69 @@ function convertirClientesDesdeMySQL(clientesDB, vehiculosDB){
     };
   });
 }
-function convertirServiciosDesdeMySQL(serviciosDB){
-  return serviciosDB.map(s => ({
-    id: 's' + s.id_servicio,
-    nombre: s.nombre_servicio,
-    descripcion: s.descripcion || '',
-    precio: parseFloat(s.precio) || 0,
-    intervaloKm: s.duracion_km || 5000,
-    intervaloDias: s.duracion_dias || 180,
-    duracion: '30-45 min',
-    imagen: 'DB',
-    categoria: detectarCategoriaServicio(s.nombre_servicio),
-    vehiculos: ['Automóvil', 'Camioneta', 'Motocicleta'],
-    estado: s.estado || 'activo'
-  }));
+function normalizarTextoServicio(texto){
+  return (texto || '').toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function servicioClaveParaComparacion(servicio){
+  const nombre = normalizarTextoServicio(servicio?.nombre || servicio?.nombre_servicio || '');
+  const categoria = normalizarTextoServicio(servicio?.categoria || '');
+  const precio = Number(servicio?.precio || 0);
+  const km = Number(servicio?.intervaloKm || servicio?.duracion_km || 0);
+  const dias = Number(servicio?.intervaloDias || servicio?.duracion_dias || 0);
+  return `${nombre}|${Number.isFinite(precio) ? precio.toFixed(2) : '0.00'}|${categoria}|${km}|${dias}`;
+}
+function inferirVehiculosServicio(servicio, servicioLocal){
+  if (Array.isArray(servicioLocal?.vehiculos) && servicioLocal.vehiculos.length) {
+    return [...new Set(servicioLocal.vehiculos)];
+  }
+
+  const texto = normalizarTextoServicio(`${servicio?.nombre_servicio || ''} ${servicio?.descripcion || ''}`);
+  const vehiculos = [];
+
+  if (/(moto|motocicleta|motorcycle)/.test(texto)) vehiculos.push('Motocicleta');
+  if (/(camioneta|pickup|van)/.test(texto)) vehiculos.push('Camioneta');
+  if (/(automovil|automóvil|carro|auto|vehiculo|vehículo)/.test(texto)) vehiculos.push('Automóvil');
+
+  if (!vehiculos.length) {
+    return ['Automóvil', 'Camioneta', 'Motocicleta'];
+  }
+
+  return vehiculos;
+}
+function convertirServiciosDesdeMySQL(serviciosDB, serviciosLocales = []){
+  const serviciosSinDuplicar = [];
+  const vistos = new Set();
+
+  serviciosDB.forEach(s => {
+    const clave = `${normalizarTextoServicio(s.nombre_servicio)}|${Number(s.precio || 0).toFixed(2)}`;
+    if (vistos.has(clave)) return;
+    vistos.add(clave);
+    serviciosSinDuplicar.push(s);
+  });
+
+  return serviciosSinDuplicar.map(s => {
+    const localMatch = (serviciosLocales || []).find(local => servicioClaveParaComparacion(local) === servicioClaveParaComparacion(s));
+    const vehiculos = inferirVehiculosServicio(s, localMatch);
+
+    return {
+      id: 's' + s.id_servicio,
+      nombre: s.nombre_servicio,
+      descripcion: s.descripcion || '',
+      precio: parseFloat(s.precio) || 0,
+      intervaloKm: s.duracion_km || 5000,
+      intervaloDias: s.duracion_dias || 180,
+      duracion: '30-45 min',
+      imagen: 'DB',
+      categoria: detectarCategoriaServicio(s.nombre_servicio),
+      vehiculos,
+      estado: s.estado || 'activo'
+    };
+  });
 }
 async function cargarDatosDesdeMySQL(){
   try {
@@ -335,12 +384,10 @@ async function cargarDatosDesdeMySQL(){
     // SERVICIOS: COMBINAR MySQL + JSON local (no perder datos)
     if(resServicios.ok) {
       const serviciosDB = await resServicios.json();
-      const serviciosMySQL = convertirServiciosDesdeMySQL(serviciosDB);
-
-      // Mantener servicios locales que no están en MySQL
       const serviciosLocales = state.data.servicios || [];
-      const idsMySQL = new Set(serviciosMySQL.map(s => s.id));
-      const serviciosLocalesSinDuplicar = serviciosLocales.filter(s => !idsMySQL.has(s.id));
+      const serviciosMySQL = convertirServiciosDesdeMySQL(serviciosDB, serviciosLocales);
+      const serviciosMySQLKeys = new Set(serviciosMySQL.map(s => servicioClaveParaComparacion(s)));
+      const serviciosLocalesSinDuplicar = serviciosLocales.filter(s => !serviciosMySQLKeys.has(servicioClaveParaComparacion(s)));
 
       // Combinar: MySQL + locales únicos
       state.data.servicios = [...serviciosMySQL, ...serviciosLocalesSinDuplicar];
