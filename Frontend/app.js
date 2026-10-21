@@ -607,7 +607,7 @@ function servicioImagenHtml(s, size){
         .then(r => {
           if(r.ok) return r.json();
           // Si no se encuentra con 's123', intentar con formato numérico '123'
-          const idNumerico = s.id.replace('s', '');
+          const idNumerico = s.id.replace(/[a-z]/gi, ''); // Quitar cualquier letra
           return fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`)
             .then(r2 => r2.ok ? r2.json() : null);
         })
@@ -1139,7 +1139,7 @@ async function saveServicio(ev){
       try {
         // Intentar eliminar con ambos formatos para compatibilidad
         await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${id}`, { method: 'DELETE' });
-        const idNumerico = id.replace('s', '');
+        const idNumerico = id.replace(/[a-z]/gi, ''); // Quitar cualquier letra
         await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`, { method: 'DELETE' });
       } catch(e) {
         console.warn('No se pudo eliminar imagen:', e);
@@ -1182,7 +1182,7 @@ async function saveServicio(ev){
 
     if(id){
       // ACTUALIZAR servicio existente
-      idNumerico = id.replace('s', '');
+      idNumerico = id.replace(/[a-z]/gi, ''); // Quitar cualquier letra, dejar solo números
       console.log('Actualizando servicio ID:', idNumerico);
       const resUpdate = await fetch(`../Backend/api_servicios.php?id=${idNumerico}`, {
         method: 'PUT',
