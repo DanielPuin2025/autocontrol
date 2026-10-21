@@ -602,9 +602,15 @@ function servicioImagenHtml(s, size){
     // Si no está cargada, iniciar carga (solo una vez)
     if(!s._cargandoImagen) {
       s._cargandoImagen = true;
-      const idNumerico = s.id.replace('s', '');
-      fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`)
-        .then(r => r.ok ? r.json() : null)
+      // Intentar primero con el ID original (formato 's123' para compatibilidad)
+      fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${s.id}`)
+        .then(r => {
+          if(r.ok) return r.json();
+          // Si no se encuentra con 's123', intentar con formato numérico '123'
+          const idNumerico = s.id.replace('s', '');
+          return fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`)
+            .then(r2 => r2.ok ? r2.json() : null);
+        })
         .then(data => {
           if(data && data.data_url) {
             s._imagenCargada = data.data_url;
@@ -1131,6 +1137,8 @@ async function saveServicio(ev){
     // Eliminar de la tabla si existe
     if(id) {
       try {
+        // Intentar eliminar con ambos formatos para compatibilidad
+        await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${id}`, { method: 'DELETE' });
         const idNumerico = id.replace('s', '');
         await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`, { method: 'DELETE' });
       } catch(e) {
@@ -1218,13 +1226,14 @@ async function saveServicio(ev){
     let falloImagen = null;
     if(hayNuevaImagen) {
       try {
+        // Usar siempre el ID con formato 's123' para consistencia con imágenes existentes
         const resImagen = await fetch(API_IMAGENES_URL, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             tipo: 'foto_servicio',
             imagen: state.servicioImagenTemp,
-            referencia: idNumerico
+            referencia: servicioId
           })
         });
         let payloadImagen = null;
