@@ -602,7 +602,8 @@ function servicioImagenHtml(s, size){
     // Si no está cargada, iniciar carga (solo una vez)
     if(!s._cargandoImagen) {
       s._cargandoImagen = true;
-      fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${s.id}`)
+      const idNumerico = s.id.replace('s', '');
+      fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if(data && data.data_url) {
@@ -1130,7 +1131,8 @@ async function saveServicio(ev){
     // Eliminar de la tabla si existe
     if(id) {
       try {
-        await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${id}`, { method: 'DELETE' });
+        const idNumerico = id.replace('s', '');
+        await fetch(`${API_IMAGENES_URL}?tipo=foto_servicio&ref=${idNumerico}`, { method: 'DELETE' });
       } catch(e) {
         console.warn('No se pudo eliminar imagen:', e);
       }
@@ -1222,7 +1224,7 @@ async function saveServicio(ev){
           body: JSON.stringify({
             tipo: 'foto_servicio',
             imagen: state.servicioImagenTemp,
-            referencia: servicioId
+            referencia: idNumerico
           })
         });
         let payloadImagen = null;
