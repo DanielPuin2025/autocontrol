@@ -1175,12 +1175,15 @@ async function saveServicio(ev){
       estado: 'activo'
     };
 
+    console.log('Datos a enviar a MySQL:', servicioData);
+
     let servicioId;
     let idNumerico;
 
     if(id){
       // ACTUALIZAR servicio existente
       idNumerico = id.replace('s', '');
+      console.log('Actualizando servicio ID:', idNumerico);
       const resUpdate = await fetch(`../Backend/api_servicios.php?id=${idNumerico}`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
@@ -1188,7 +1191,9 @@ async function saveServicio(ev){
       });
 
       if(!resUpdate.ok) {
-        throw new Error('Error al actualizar servicio en MySQL');
+        const errorText = await resUpdate.text();
+        console.error('Error del servidor:', errorText);
+        throw new Error('Error al actualizar servicio en MySQL: ' + errorText);
       }
 
       servicioId = id;
@@ -1211,7 +1216,9 @@ async function saveServicio(ev){
       });
 
       if(!resCreate.ok) {
-        throw new Error('Error al crear servicio en MySQL');
+        const errorText = await resCreate.text();
+        console.error('Error del servidor:', errorText);
+        throw new Error('Error al crear servicio en MySQL: ' + errorText);
       }
 
       const result = await resCreate.json();
